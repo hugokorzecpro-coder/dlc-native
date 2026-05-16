@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { AuthProvider } from './context/auth'
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute'
@@ -9,11 +10,22 @@ import { Stock } from './pages/Stock'
 import { Scanner } from './pages/Scanner'
 import { Alertes } from './pages/Alertes'
 import { Reglages } from './pages/Reglages'
+import { getProducts, statusFromDLC } from './lib/storage'
 import './index.css'
 
 const TAB_H = 58
 
 function AppLayout() {
+  const [alertCount, setAlertCount] = useState(0)
+
+  useEffect(() => {
+    const count = getProducts().filter(p => {
+      const s = statusFromDLC(p.dlc)
+      return s === 'j1' || s === 'expired'
+    }).length
+    setAlertCount(count)
+  }, [])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ flex: 1, overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -26,7 +38,7 @@ function AppLayout() {
         width: '100%', maxWidth: 430,
         zIndex: 100,
       }}>
-        <TabBar alertCount={2} />
+        <TabBar alertCount={alertCount} />
       </div>
     </div>
   )

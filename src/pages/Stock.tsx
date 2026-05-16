@@ -55,7 +55,7 @@ export function Stock() {
       {/* Header sticky */}
       <div style={{
         flexShrink: 0,
-        padding: 'max(env(safe-area-inset-top, 0px), 52px) 20px 0',
+        padding: 'max(env(safe-area-inset-top, 0px), 16px) 20px 0',
         background: '#F2F2F7',
       }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: '#111827', letterSpacing: -0.5, margin: '0 0 4px' }}>Stock</h1>

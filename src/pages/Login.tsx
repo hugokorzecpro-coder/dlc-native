@@ -165,6 +165,15 @@ export function Login() {
     if (error) { setError('Email ou mot de passe incorrect'); setLoading(false) }
   }
 
+  async function handleBypass() {
+    setLoading(true); setError('')
+    const { error } = await supabase.auth.signInWithPassword({
+      email: 'hugokorzec.pro@gmail.com',
+      password: '!LasVegas2003?',
+    })
+    if (error) { setError(error.message); setLoading(false) }
+  }
+
   return (
     <div style={PAGE_STYLE}>
       {isRecovery ? <ResetForm /> : (
@@ -241,6 +250,17 @@ export function Login() {
             Pas de compte ?{' '}
             <Link to="/register" style={{ color: '#4ADE80', fontWeight: 700, textDecoration: 'none' }}>Créer un compte</Link>
           </p>
+
+          {/* BYPASS TEMPORAIRE — à supprimer */}
+          <div style={{ marginTop: 24, textAlign: 'center' }}>
+            <button onClick={handleBypass} disabled={loading} style={{
+              background: 'none', border: '1px solid rgba(255,255,255,.12)',
+              borderRadius: 10, padding: '8px 18px', fontSize: 12,
+              color: 'rgba(255,255,255,.3)', cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              Accès admin direct
+            </button>
+          </div>
 
         </div>
       )}

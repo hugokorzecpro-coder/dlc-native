@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ScanLine, Mail, Lock, Loader2 } from 'lucide-react'
+import { ScanLine, Mail, Lock, Loader2, CheckCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 function GoogleIcon() {
@@ -14,12 +14,134 @@ function GoogleIcon() {
   )
 }
 
+const PAGE_STYLE: React.CSSProperties = {
+  height: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: '#09090D',
+  backgroundImage: 'radial-gradient(ellipse 90% 55% at 50% -5%, rgba(22,163,74,.22), transparent 65%)',
+  padding: '48px 24px',
+  overflowY: 'auto',
+}
+
+const FIELD_STYLE: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 12,
+  background: 'rgba(255,255,255,.06)',
+  border: '1px solid rgba(255,255,255,.1)',
+  borderRadius: 14, padding: '15px 18px',
+}
+
+const BTN_STYLE: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+  background: 'linear-gradient(135deg, #16A34A 0%, #22C55E 100%)',
+  color: '#fff', border: 'none', borderRadius: 14,
+  padding: '16px', fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
+  marginTop: 6, cursor: 'pointer',
+  boxShadow: '0 4px 24px rgba(22,163,74,.4), 0 1px 0 rgba(255,255,255,.15) inset',
+  width: '100%',
+}
+
+const ICON_COLOR = 'rgba(255,255,255,.3)'
+
+// ─── Reset password form ──────────────────────────────────────────────────────
+
+function ResetForm() {
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (password.length < 6) { setError('Minimum 6 caractères'); return }
+    if (password !== confirm) { setError('Les mots de passe ne correspondent pas'); return }
+    setLoading(true); setError('')
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) { setError(error.message); setLoading(false); return }
+    setDone(true)
+    setTimeout(() => { window.location.href = '/' }, 1800)
+  }
+
+  return (
+    <div style={{ width: '100%', maxWidth: 396, animation: 'fadeIn .35s ease-out' }}>
+      <div style={{ textAlign: 'center', marginBottom: 44 }}>
+        <div style={{
+          width: 78, height: 78, borderRadius: 24,
+          background: 'linear-gradient(145deg, #16A34A 0%, #22C55E 100%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 22px',
+          boxShadow: '0 0 0 1px rgba(34,197,94,.25), 0 8px 32px rgba(22,163,74,.4)',
+        }}>
+          <Lock size={36} color="white" strokeWidth={2} />
+        </div>
+        <h1 style={{ fontSize: 30, fontWeight: 800, color: '#fff', letterSpacing: -1.2, margin: '0 0 8px' }}>
+          Nouveau mot de passe
+        </h1>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,.38)', margin: 0 }}>
+          Choisissez un nouveau mot de passe pour votre compte
+        </p>
+      </div>
+
+      {done ? (
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <CheckCircle size={48} color="#4ADE80" style={{ margin: '0 auto 16px', display: 'block' }} />
+          <p style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: '0 0 8px' }}>Mot de passe mis à jour !</p>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,.4)', margin: 0 }}>Redirection en cours…</p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={FIELD_STYLE}>
+            <Lock size={16} color={ICON_COLOR} style={{ flexShrink: 0 }} />
+            <input
+              type="password" value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Nouveau mot de passe"
+              required className="input-dark"
+              style={{ flex: 1, background: 'transparent', fontSize: 15, outline: 'none', border: 'none', fontFamily: 'inherit' }}
+            />
+          </div>
+          <div style={FIELD_STYLE}>
+            <Lock size={16} color={ICON_COLOR} style={{ flexShrink: 0 }} />
+            <input
+              type="password" value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              placeholder="Confirmer le mot de passe"
+              required className="input-dark"
+              style={{ flex: 1, background: 'transparent', fontSize: 15, outline: 'none', border: 'none', fontFamily: 'inherit' }}
+            />
+          </div>
+          {error && (
+            <div style={{ background: 'rgba(239,68,68,.12)', border: '1px solid rgba(239,68,68,.22)', borderRadius: 12, padding: '10px 14px' }}>
+              <p style={{ fontSize: 13, color: '#FCA5A5', margin: 0, fontWeight: 500 }}>{error}</p>
+            </div>
+          )}
+          <button type="submit" disabled={loading} style={{ ...BTN_STYLE, boxShadow: loading ? 'none' : BTN_STYLE.boxShadow, background: loading ? 'rgba(22,163,74,.45)' : 'linear-gradient(135deg, #16A34A 0%, #22C55E 100%)' }}>
+            {loading ? <Loader2 size={18} style={{ animation: 'spin .7s linear infinite' }} /> : 'Enregistrer le mot de passe'}
+          </button>
+        </form>
+      )}
+    </div>
+  )
+}
+
+// ─── Main login form ──────────────────────────────────────────────────────────
+
 export function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [isRecovery, setIsRecovery] = useState(false)
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   async function handleGoogle() {
     setGoogleLoading(true)
@@ -37,155 +159,81 @@ export function Login() {
   }
 
   return (
-    <div style={{
-      height: '100%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#09090D',
-      backgroundImage: 'radial-gradient(ellipse 90% 55% at 50% -5%, rgba(22,163,74,.22), transparent 65%)',
-      padding: '48px 24px',
-      overflowY: 'auto',
-    }}>
-      <div style={{ width: '100%', maxWidth: 396, animation: 'fadeIn .35s ease-out' }}>
+    <div style={PAGE_STYLE}>
+      {isRecovery ? <ResetForm /> : (
+        <div style={{ width: '100%', maxWidth: 396, animation: 'fadeIn .35s ease-out' }}>
 
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 52 }}>
-          <div style={{
-            width: 78, height: 78, borderRadius: 24,
-            background: 'linear-gradient(145deg, #16A34A 0%, #22C55E 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 22px',
-            boxShadow: '0 0 0 1px rgba(34,197,94,.25), 0 8px 32px rgba(22,163,74,.4), 0 0 80px rgba(22,163,74,.18)',
-          }}>
-            <ScanLine size={36} color="white" strokeWidth={2} />
-          </div>
-          <h1 style={{
-            fontSize: 34, fontWeight: 800, color: '#fff',
-            letterSpacing: -1.4, margin: '0 0 8px', lineHeight: 1.1,
-          }}>
-            DLC Manager
-          </h1>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,.38)', margin: 0, fontWeight: 400 }}>
-            Gérez vos dates de consommation
-          </p>
-        </div>
-
-        {/* Google */}
-        <button
-          onClick={handleGoogle}
-          disabled={googleLoading}
-          style={{
-            width: '100%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 11,
-            background: 'rgba(255,255,255,.07)',
-            border: '1px solid rgba(255,255,255,.11)',
-            borderRadius: 14, padding: '15px 20px',
-            fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,.88)',
-            cursor: 'pointer', fontFamily: 'inherit',
-            marginBottom: 18, transition: 'background .15s',
-            opacity: googleLoading ? 0.6 : 1,
-          }}
-        >
-          {googleLoading
-            ? <Loader2 size={18} style={{ animation: 'spin .7s linear infinite' }} />
-            : <GoogleIcon />
-          }
-          Continuer avec Google
-        </button>
-
-        {/* Divider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.08)' }} />
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,.22)', fontWeight: 700, letterSpacing: 2 }}>OU</span>
-          <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.08)' }} />
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            background: 'rgba(255,255,255,.06)',
-            border: '1px solid rgba(255,255,255,.1)',
-            borderRadius: 14, padding: '15px 18px',
-            transition: 'border-color .15s',
-          }}>
-            <Mail size={16} color="rgba(255,255,255,.3)" style={{ flexShrink: 0 }} />
-            <input
-              type="email" value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="Email"
-              required
-              className="input-dark"
-              style={{
-                flex: 1, background: 'transparent', fontSize: 15,
-                outline: 'none', border: 'none', fontFamily: 'inherit',
-              }}
-            />
-          </div>
-
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            background: 'rgba(255,255,255,.06)',
-            border: '1px solid rgba(255,255,255,.1)',
-            borderRadius: 14, padding: '15px 18px',
-          }}>
-            <Lock size={16} color="rgba(255,255,255,.3)" style={{ flexShrink: 0 }} />
-            <input
-              type="password" value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Mot de passe"
-              required
-              className="input-dark"
-              style={{
-                flex: 1, background: 'transparent', fontSize: 15,
-                outline: 'none', border: 'none', fontFamily: 'inherit',
-              }}
-            />
-          </div>
-
-          {error && (
+          {/* Logo */}
+          <div style={{ textAlign: 'center', marginBottom: 52 }}>
             <div style={{
-              background: 'rgba(239,68,68,.12)',
-              border: '1px solid rgba(239,68,68,.22)',
-              borderRadius: 12, padding: '10px 14px',
+              width: 78, height: 78, borderRadius: 24,
+              background: 'linear-gradient(145deg, #16A34A 0%, #22C55E 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 22px',
+              boxShadow: '0 0 0 1px rgba(34,197,94,.25), 0 8px 32px rgba(22,163,74,.4), 0 0 80px rgba(22,163,74,.18)',
             }}>
-              <p style={{ fontSize: 13, color: '#FCA5A5', margin: 0, fontWeight: 500 }}>{error}</p>
+              <ScanLine size={36} color="white" strokeWidth={2} />
             </div>
-          )}
+            <h1 style={{ fontSize: 34, fontWeight: 800, color: '#fff', letterSpacing: -1.4, margin: '0 0 8px', lineHeight: 1.1 }}>
+              DLC Manager
+            </h1>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,.38)', margin: 0 }}>
+              Gérez vos dates de consommation
+            </p>
+          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              background: loading
-                ? 'rgba(22,163,74,.45)'
-                : 'linear-gradient(135deg, #16A34A 0%, #22C55E 100%)',
-              color: '#fff', border: 'none', borderRadius: 14,
-              padding: '16px', fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
-              marginTop: 6, cursor: loading ? 'default' : 'pointer',
-              boxShadow: loading ? 'none' : '0 4px 24px rgba(22,163,74,.4), 0 1px 0 rgba(255,255,255,.15) inset',
-              transition: 'all .15s',
-            }}
-          >
-            {loading
-              ? <Loader2 size={18} style={{ animation: 'spin .7s linear infinite' }} />
-              : 'Se connecter'
-            }
+          {/* Google */}
+          <button onClick={handleGoogle} disabled={googleLoading} style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 11,
+            background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.11)',
+            borderRadius: 14, padding: '15px 20px', fontSize: 14, fontWeight: 600,
+            color: 'rgba(255,255,255,.88)', cursor: 'pointer', fontFamily: 'inherit',
+            marginBottom: 18, opacity: googleLoading ? 0.6 : 1,
+          }}>
+            {googleLoading ? <Loader2 size={18} style={{ animation: 'spin .7s linear infinite' }} /> : <GoogleIcon />}
+            Continuer avec Google
           </button>
-        </form>
 
-        {/* Footer */}
-        <p style={{ textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,.32)', marginTop: 32 }}>
-          Pas de compte ?{' '}
-          <Link to="/register" style={{ color: '#4ADE80', fontWeight: 700, textDecoration: 'none' }}>
-            Créer un compte
-          </Link>
-        </p>
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.08)' }} />
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,.22)', fontWeight: 700, letterSpacing: 2 }}>OU</span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,.08)' }} />
+          </div>
 
-      </div>
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={FIELD_STYLE}>
+              <Mail size={16} color={ICON_COLOR} style={{ flexShrink: 0 }} />
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="Email" required className="input-dark"
+                style={{ flex: 1, background: 'transparent', fontSize: 15, outline: 'none', border: 'none', fontFamily: 'inherit' }} />
+            </div>
+            <div style={FIELD_STYLE}>
+              <Lock size={16} color={ICON_COLOR} style={{ flexShrink: 0 }} />
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="Mot de passe" required className="input-dark"
+                style={{ flex: 1, background: 'transparent', fontSize: 15, outline: 'none', border: 'none', fontFamily: 'inherit' }} />
+            </div>
+
+            {error && (
+              <div style={{ background: 'rgba(239,68,68,.12)', border: '1px solid rgba(239,68,68,.22)', borderRadius: 12, padding: '10px 14px' }}>
+                <p style={{ fontSize: 13, color: '#FCA5A5', margin: 0, fontWeight: 500 }}>{error}</p>
+              </div>
+            )}
+
+            <button type="submit" disabled={loading} style={{ ...BTN_STYLE, background: loading ? 'rgba(22,163,74,.45)' : 'linear-gradient(135deg, #16A34A 0%, #22C55E 100%)', boxShadow: loading ? 'none' : BTN_STYLE.boxShadow, cursor: loading ? 'default' : 'pointer' }}>
+              {loading ? <Loader2 size={18} style={{ animation: 'spin .7s linear infinite' }} /> : 'Se connecter'}
+            </button>
+          </form>
+
+          <p style={{ textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,.32)', marginTop: 32 }}>
+            Pas de compte ?{' '}
+            <Link to="/register" style={{ color: '#4ADE80', fontWeight: 700, textDecoration: 'none' }}>Créer un compte</Link>
+          </p>
+
+        </div>
+      )}
     </div>
   )
 }

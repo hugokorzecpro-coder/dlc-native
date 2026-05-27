@@ -12,25 +12,25 @@ export type Colors = {
 }
 
 const LIGHT: Colors = {
-  bg: '#F2F2F7',
-  card: '#ffffff',
-  input: '#F9FAFB',
-  border: '#F3F4F6',
-  borderStrong: '#E5E7EB',
-  text: '#111827',
-  textSub: '#6B7280',
-  textMuted: '#9CA3AF',
+  bg: '#F5F5F7',
+  card: '#FFFFFF',
+  input: '#F5F5F7',
+  border: '#E8E8ED',
+  borderStrong: '#D1D1D6',
+  text: '#1C1C1E',
+  textSub: '#636366',
+  textMuted: '#8E8E93',
 }
 
 const DARK: Colors = {
-  bg: '#1C1C1E',
-  card: '#2C2C2E',
-  input: '#3A3A3C',
-  border: '#3A3A3C',
+  bg: '#000000',
+  card: '#1C1C1E',
+  input: '#2C2C2E',
+  border: '#38383A',
   borderStrong: '#48484A',
-  text: '#F9FAFB',
-  textSub: '#A1A1AA',
-  textMuted: '#6B7280',
+  text: '#FFFFFF',
+  textSub: '#EBEBF5',
+  textMuted: '#636366',
 }
 
 type ThemeCtx = { dark: boolean; toggle: () => void; c: Colors }
@@ -41,8 +41,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem('dlc-theme', dark ? 'dark' : 'light')
-    document.body.style.background = dark ? '#1C1C1E' : '#F2F2F7'
-    document.body.style.color = dark ? '#F9FAFB' : '#111827'
+    document.body.style.background = dark ? '#000000' : '#F5F5F7'
+    document.body.style.color = dark ? '#FFFFFF' : '#1C1C1E'
   }, [dark])
 
   return (

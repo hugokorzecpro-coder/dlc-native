@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, ScanLine, Package, ChevronRight, CheckCircle, LayoutGrid } from 'lucide-react'
+import { Bell, Package, ChevronRight, CheckCircle, LayoutGrid, Plus } from 'lucide-react'
 import { useAuth } from '../context/auth'
 import { useTheme } from '../context/theme'
 import { useSpace, SPACE_ICONS } from '../context/space'
+import { useIsMobile } from '../hooks/useBreakpoint'
 import { getProducts, statusFromDLC, daysUntil, formatDLC, type StoredProduct } from '../lib/storage'
+import { AddProductModal } from '../components/AddProductModal'
 
 type Enriched = StoredProduct & { status: 'expired' | 'j1' | 'j2' | 'j5' | 'ok'; daysLeft: number }
 
@@ -51,185 +53,253 @@ export function Dashboard() {
   const { user } = useAuth()
   const { c } = useTheme()
   const { space, selected, clearSelection } = useSpace()
+  const isMobile = useIsMobile()
   const [products, setProducts] = useState<Enriched[]>([])
+  const [showAdd, setShowAdd] = useState(false)
 
-  useEffect(() => {
-    getProducts(space?.id ?? null).then(all => {
-      setProducts(all.map(p => ({ ...p, status: statusFromDLC(p.dlc) as Enriched['status'], daysLeft: daysUntil(p.dlc) })))
-    })
-  }, [space?.id])
+  async function load() {
+    const all = await getProducts(space?.id ?? null)
+    setProducts(all.map(p => ({ ...p, status: statusFromDLC(p.dlc) as Enriched['status'], daysLeft: daysUntil(p.dlc) })))
+  }
+
+  useEffect(() => { load() }, [space?.id])
 
   const urgent = products.filter(p => p.status === 'j1' || p.status === 'expired')
   const soon   = products.filter(p => p.status === 'j2' || p.status === 'j5')
   const name   = (user?.user_metadata?.establishment_name ?? user?.email?.split('@')[0] ?? 'Chef') as string
   const isAdmin = selected && space === null
+  const maxW = isMobile ? '100%' : 1100
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, background: c.bg }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: isMobile ? 0 : 'auto', background: c.bg }}>
 
       {/* Header */}
       <div style={{
-        flexShrink: 0,
-        paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)',
-        padding: 'max(env(safe-area-inset-top, 0px), 16px) 20px 20px',
-        background: c.bg,
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+        flexShrink: 0, background: c.bg,
+        paddingTop: isMobile ? 'max(env(safe-area-inset-top, 0px), 16px)' : 32,
+        position: isMobile ? undefined : 'sticky', top: 0, zIndex: 10,
+        borderBottom: isMobile ? 'none' : `1px solid ${c.border}`,
       }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <p style={{ fontSize: 13, color: c.textMuted, fontWeight: 500, margin: 0 }}>
-              {isAdmin ? name : (user?.user_metadata?.establishment_name ?? name)}
-            </p>
-            {/* Space badge */}
-            <button
-              onClick={clearSelection}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                background: isAdmin ? '#EFF6FF' : '#F0FDF4',
-                border: 'none', borderRadius: 8,
-                padding: '3px 8px', cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-              title="Changer d'espace"
-            >
-              {isAdmin ? (
-                <>
-                  <LayoutGrid size={11} color="#2563EB" />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#2563EB' }}>Admin</span>
-                </>
-              ) : space ? (
-                <>
-                  <span style={{ fontSize: 12 }}>{SPACE_ICONS[space.type] || '🏢'}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>{space.name}</span>
-                </>
-              ) : null}
-            </button>
-          </div>
-          <h1 style={{ fontSize: 30, fontWeight: 800, color: c.text, letterSpacing: -1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {isAdmin ? 'Vue globale' : (space?.name ?? name)}
-          </h1>
-        </div>
-        <Link to="/alertes" style={{
-          width: 44, height: 44, background: c.card, borderRadius: 14,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 1px 4px rgba(0,0,0,.08)', position: 'relative',
-          textDecoration: 'none', flexShrink: 0, marginLeft: 12,
+        <div style={{
+          maxWidth: maxW, margin: '0 auto',
+          padding: isMobile ? '0 20px 20px' : '0 32px 20px',
+          display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'space-between',
         }}>
-          <Bell size={20} color={c.textSub} />
-          {urgent.length > 0 && (
-            <span style={{
-              position: 'absolute', top: 9, right: 9,
-              width: 8, height: 8, borderRadius: '50%',
-              background: '#EF4444', border: `2px solid ${c.card}`,
-            }} />
-          )}
-        </Link>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <p style={{ fontSize: 13, color: c.textMuted, fontWeight: 500, margin: 0 }}>
+                {isAdmin ? name : (user?.user_metadata?.establishment_name ?? name)}
+              </p>
+              <button
+                onClick={clearSelection}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  background: isAdmin ? '#EFF6FF' : '#F0FDF4',
+                  border: 'none', borderRadius: 8,
+                  padding: '3px 8px', cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+                title="Changer d'espace"
+              >
+                {isAdmin ? (
+                  <>
+                    <LayoutGrid size={11} color="#2563EB" />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#2563EB' }}>Admin</span>
+                  </>
+                ) : space ? (
+                  <>
+                    <span style={{ fontSize: 12 }}>{SPACE_ICONS[space.type] || '🏢'}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#16A34A' }}>{space.name}</span>
+                  </>
+                ) : null}
+              </button>
+            </div>
+            <h1 style={{ fontSize: isMobile ? 30 : 32, fontWeight: 800, color: c.text, letterSpacing: -1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {isAdmin ? 'Vue globale' : (space?.name ?? name)}
+            </h1>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
+            {!isMobile && (
+              <button
+                onClick={() => setShowAdd(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: '#16A34A', color: '#fff', border: 'none',
+                  borderRadius: 12, padding: '10px 18px',
+                  fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  boxShadow: '0 4px 14px rgba(22,163,74,.35)',
+                }}
+              >
+                <Plus size={16} /> Ajouter un produit
+              </button>
+            )}
+            <Link to="/alertes" style={{
+              width: 44, height: 44, background: c.card, borderRadius: 14,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 1px 4px rgba(0,0,0,.08)', position: 'relative',
+              textDecoration: 'none',
+            }}>
+              <Bell size={20} color={c.textSub} />
+              {urgent.length > 0 && (
+                <span style={{
+                  position: 'absolute', top: 9, right: 9,
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: '#EF4444', border: `2px solid ${c.card}`,
+                }} />
+              )}
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Scrollable content */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '0 20px 24px' }}>
+      <div style={{ flex: 1, overflowY: isMobile ? 'auto' : undefined, minHeight: 0, padding: isMobile ? '8px 20px 24px' : '28px 32px 40px' }}>
+        <div style={{ maxWidth: maxW, margin: '0 auto' }}>
 
-        {/* Stats */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 28 }}>
-          {[
-            { n: products.length, label: 'En stock', dot: '#16A34A' },
-            { n: soon.length,     label: 'Bientôt',  dot: '#F59E0B' },
-            { n: urgent.length,   label: 'Urgents',  dot: '#EF4444' },
-          ].map(({ n, label, dot }) => (
-            <div key={label} style={{ flex: 1, background: c.card, borderRadius: 20, padding: '16px 14px', boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: dot, marginBottom: 12 }} />
-              <div style={{ fontSize: 30, fontWeight: 800, color: c.text, lineHeight: 1, letterSpacing: -1 }}>{n}</div>
-              <div style={{ fontSize: 11, color: c.textMuted, fontWeight: 500, marginTop: 6 }}>{label}</div>
-            </div>
-          ))}
-        </div>
+          {/* Stats row */}
+          <div style={{ display: 'flex', gap: isMobile ? 10 : 16, marginBottom: isMobile ? 28 : 32 }}>
+            {[
+              { n: products.length, label: 'En stock',   dot: '#16A34A' },
+              { n: soon.length,     label: 'Bientôt',    dot: '#F59E0B' },
+              { n: urgent.length,   label: 'Urgents',    dot: '#EF4444' },
+            ].map(({ n, label, dot }) => (
+              <div key={label} style={{
+                flex: 1, background: c.card, borderRadius: isMobile ? 20 : 18,
+                padding: isMobile ? '16px 14px' : '20px 24px',
+                boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+              }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: dot, marginBottom: isMobile ? 12 : 16 }} />
+                <div style={{ fontSize: isMobile ? 30 : 36, fontWeight: 800, color: c.text, lineHeight: 1, letterSpacing: -1 }}>{n}</div>
+                <div style={{ fontSize: isMobile ? 11 : 13, color: c.textMuted, fontWeight: 500, marginTop: isMobile ? 6 : 8 }}>{label}</div>
+              </div>
+            ))}
+          </div>
 
-        {/* Urgents — story row */}
-        {urgent.length > 0 && (
-          <div style={{ marginLeft: -20, marginRight: -20, marginBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 20, paddingRight: 20, marginBottom: 16 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: c.text, margin: 0 }}>Urgents</h2>
-              <Link to="/alertes" style={{ fontSize: 13, fontWeight: 600, color: '#16A34A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
-                Voir tout <ChevronRight size={14} />
-              </Link>
-            </div>
-            <div style={{ overflowX: 'auto', scrollbarWidth: 'none', display: 'flex', gap: 16, paddingLeft: 20, paddingRight: 20 }}>
-              {urgent.map(p => {
-                const s = ST[p.status]
-                return (
-                  <div key={p.id} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                    <div style={{
-                      width: 58, height: 58, borderRadius: '50%', background: s.accent,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: `0 0 0 3px ${c.bg}, 0 0 0 5.5px ${s.accent}`,
-                      fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: -0.5,
-                    }}>
-                      {p.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <span style={{
-                      fontSize: 10, fontWeight: 600, color: c.textSub,
-                      width: 64, textAlign: 'center',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      {p.name.split(' ')[0]}
-                    </span>
+          {/* Desktop: 2-col grid for urgent + soon */}
+          {!isMobile && (urgent.length > 0 || soon.length > 0) && (
+            <div style={{ display: 'grid', gridTemplateColumns: urgent.length > 0 && soon.length > 0 ? '1fr 1fr' : '1fr', gap: 32 }}>
+              {urgent.length > 0 && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                    <h2 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: 0 }}>Urgents</h2>
+                    <Link to="/alertes" style={{ fontSize: 13, fontWeight: 600, color: '#16A34A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
+                      Voir tout <ChevronRight size={14} />
+                    </Link>
                   </div>
-                )
-              })}
+                  {urgent.map(p => <ProductRow key={p.id} p={p} />)}
+                </div>
+              )}
+              {soon.length > 0 && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                    <h2 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: 0 }}>Bientôt</h2>
+                    <Link to="/stock" style={{ fontSize: 13, fontWeight: 600, color: '#16A34A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
+                      Voir tout <ChevronRight size={14} />
+                    </Link>
+                  </div>
+                  {soon.map(p => <ProductRow key={p.id} p={p} />)}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Bientôt */}
-        {soon.length > 0 && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: c.text, margin: 0 }}>Bientôt</h2>
-              <Link to="/stock" style={{ fontSize: 13, fontWeight: 600, color: '#16A34A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
-                Voir tout <ChevronRight size={14} />
-              </Link>
-            </div>
-            {soon.slice(0, 3).map(p => <ProductRow key={p.id} p={p} />)}
-          </>
-        )}
+          {/* Mobile: original layout */}
+          {isMobile && (
+            <>
+              {urgent.length > 0 && (
+                <div style={{ marginLeft: -20, marginRight: -20, marginBottom: 28 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 20, paddingRight: 20, marginBottom: 16 }}>
+                    <h2 style={{ fontSize: 17, fontWeight: 700, color: c.text, margin: 0 }}>Urgents</h2>
+                    <Link to="/alertes" style={{ fontSize: 13, fontWeight: 600, color: '#16A34A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
+                      Voir tout <ChevronRight size={14} />
+                    </Link>
+                  </div>
+                  <div style={{ overflowX: 'auto', scrollbarWidth: 'none', display: 'flex', gap: 16, paddingLeft: 20, paddingRight: 20 }}>
+                    {urgent.map(p => {
+                      const s = ST[p.status]
+                      return (
+                        <div key={p.id} style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                          <div style={{
+                            width: 58, height: 58, borderRadius: '50%', background: s.accent,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: `0 0 0 3px ${c.bg}, 0 0 0 5.5px ${s.accent}`,
+                            fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: -0.5,
+                          }}>
+                            {p.name.slice(0, 2).toUpperCase()}
+                          </div>
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, color: c.textSub,
+                            width: 64, textAlign: 'center',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {p.name.split(' ')[0]}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
 
-        {/* All good */}
-        {products.length > 0 && urgent.length === 0 && soon.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '32px 0' }}>
-            <div style={{
-              width: 72, height: 72, borderRadius: '50%', background: '#F0FDF4', border: '3px solid #16A34A',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
-            }}>
-              <CheckCircle size={32} color="#16A34A" />
-            </div>
-            <p style={{ fontSize: 17, fontWeight: 700, color: c.text, margin: '0 0 6px' }}>Tout est OK</p>
-            <p style={{ fontSize: 14, color: c.textMuted, margin: 0 }}>{products.length} produit{products.length > 1 ? 's' : ''} en stock</p>
-          </div>
-        )}
+              {soon.length > 0 && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                    <h2 style={{ fontSize: 17, fontWeight: 700, color: c.text, margin: 0 }}>Bientôt</h2>
+                    <Link to="/stock" style={{ fontSize: 13, fontWeight: 600, color: '#16A34A', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
+                      Voir tout <ChevronRight size={14} />
+                    </Link>
+                  </div>
+                  {soon.slice(0, 3).map(p => <ProductRow key={p.id} p={p} />)}
+                </>
+              )}
+            </>
+          )}
 
-        {/* Empty */}
-        {products.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <div style={{
-              width: 72, height: 72, borderRadius: 22, background: c.card,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 20px', boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-            }}>
-              <Package size={30} color={c.textMuted} />
+          {/* All good */}
+          {products.length > 0 && urgent.length === 0 && soon.length === 0 && (
+            <div style={{ textAlign: 'center', padding: isMobile ? '32px 0' : '60px 0' }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: '50%', background: '#F0FDF4', border: '3px solid #16A34A',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+              }}>
+                <CheckCircle size={32} color="#16A34A" />
+              </div>
+              <p style={{ fontSize: 17, fontWeight: 700, color: c.text, margin: '0 0 6px' }}>Tout est OK</p>
+              <p style={{ fontSize: 14, color: c.textMuted, margin: 0 }}>{products.length} produit{products.length > 1 ? 's' : ''} en stock</p>
             </div>
-            <p style={{ fontSize: 17, fontWeight: 700, color: c.text, margin: '0 0 8px' }}>Stock vide</p>
-            <p style={{ fontSize: 14, color: c.textMuted, margin: '0 0 28px' }}>Scannez votre premier produit</p>
-            <Link to="/scanner" style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: '#16A34A', color: '#fff', borderRadius: 14,
-              padding: '14px 24px', fontSize: 15, fontWeight: 700,
-              textDecoration: 'none', boxShadow: '0 8px 20px rgba(22,163,74,.3)',
-            }}>
-              <ScanLine size={18} /> Scanner
-            </Link>
-          </div>
-        )}
+          )}
+
+          {/* Empty */}
+          {products.length === 0 && (
+            <div style={{ textAlign: 'center', padding: isMobile ? '40px 0' : '60px 0' }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: 22, background: c.card,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 20px', boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+              }}>
+                <Package size={30} color={c.textMuted} />
+              </div>
+              <p style={{ fontSize: 17, fontWeight: 700, color: c.text, margin: '0 0 8px' }}>Stock vide</p>
+              <p style={{ fontSize: 14, color: c.textMuted, margin: '0 0 28px' }}>Ajoutez votre premier produit</p>
+              <button
+                onClick={() => setShowAdd(true)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: '#16A34A', color: '#fff', borderRadius: 14,
+                  padding: '14px 24px', fontSize: 15, fontWeight: 700,
+                  border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                  boxShadow: '0 8px 20px rgba(22,163,74,.3)',
+                }}
+              >
+                <Plus size={18} /> Ajouter un produit
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      <AddProductModal open={showAdd} onClose={() => setShowAdd(false)} onAdded={load} />
     </div>
   )
 }

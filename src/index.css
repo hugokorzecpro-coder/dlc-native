@@ -29,3 +29,15 @@ body {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes cameraFill {
+  0%   { clip-path: inset(100% 0 0 0); }
+  42%  { clip-path: inset(0% 0 0 0); }
+  58%  { clip-path: inset(0% 0 0 0); }
+  100% { clip-path: inset(100% 0 0 0); }
+}

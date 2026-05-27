@@ -3,13 +3,14 @@ import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { AuthProvider } from './context/auth'
 import { SpaceProvider, useSpace } from './context/space'
 import { useTheme } from './context/theme'
+import { useIsMobile } from './hooks/useBreakpoint'
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute'
 import { TabBar } from './components/TabBar'
+import { Sidebar } from './components/Sidebar'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { Dashboard } from './pages/Dashboard'
 import { Stock } from './pages/Stock'
-import { Scanner } from './pages/Scanner'
 import { Alertes } from './pages/Alertes'
 import { Reglages } from './pages/Reglages'
 import { SpaceSelect } from './pages/SpaceSelect'
@@ -21,6 +22,7 @@ const TAB_H = 58
 function AppLayout() {
   const [alertCount, setAlertCount] = useState(0)
   const { space } = useSpace()
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     getProducts(space?.id ?? null).then(products => {
@@ -31,6 +33,19 @@ function AppLayout() {
     })
   }, [space?.id])
 
+  // ── Desktop layout ──────────────────────────────────────────────────────────
+  if (!isMobile) {
+    return (
+      <div style={{ display: 'flex', height: '100%', width: '100%' }}>
+        <Sidebar alertCount={alertCount} />
+        <main style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <Outlet />
+        </main>
+      </div>
+    )
+  }
+
+  // ── Mobile layout ───────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -57,11 +72,16 @@ function SpaceGuard({ children }: { children: React.ReactNode }) {
 
 function AppWrapper({ children }: { children: React.ReactNode }) {
   const { c } = useTheme()
+  const isMobile = useIsMobile()
   return (
     <div style={{
-      width: '100%', maxWidth: 430, height: '100%',
-      margin: '0 auto', background: c.bg,
-      position: 'relative', overflow: 'hidden',
+      width: '100%',
+      maxWidth: isMobile ? 430 : '100%',
+      height: '100%',
+      margin: isMobile ? '0 auto' : 0,
+      background: c.bg,
+      position: 'relative',
+      overflow: isMobile ? 'hidden' : 'visible',
     }}>
       {children}
     </div>
@@ -75,7 +95,7 @@ export default function App() {
         <SpaceProvider>
           <AppWrapper>
             <Routes>
-              <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+              <Route path="/login"    element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
               <Route element={
                 <ProtectedRoute>
@@ -84,10 +104,9 @@ export default function App() {
                   </SpaceGuard>
                 </ProtectedRoute>
               }>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/stock" element={<Stock />} />
-                <Route path="/scanner" element={<Scanner />} />
-                <Route path="/alertes" element={<Alertes />} />
+                <Route path="/"         element={<Dashboard />} />
+                <Route path="/stock"    element={<Stock />} />
+                <Route path="/alertes"  element={<Alertes />} />
                 <Route path="/reglages" element={<Reglages />} />
               </Route>
             </Routes>

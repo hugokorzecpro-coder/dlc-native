@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, Clock, Bell as BellIcon, CheckCheck, Loader2 } from 'lucide-react'
 import { useTheme } from '../context/theme'
 import { useSpace } from '../context/space'
+import { useIsMobile } from '../hooks/useBreakpoint'
 import { supabase } from '../lib/supabase'
 import { getProducts, closeLot, statusFromDLC, daysUntil, formatDLC, type StoredProduct } from '../lib/storage'
 
@@ -76,6 +77,7 @@ function AlertCard({
 export function Alertes() {
   const { c } = useTheme()
   const { space } = useSpace()
+  const isMobile = useIsMobile()
   const [products, setProducts] = useState<Enriched[]>([])
 
   async function load() {
@@ -100,53 +102,60 @@ export function Alertes() {
 
   const today    = products.filter(p => p.status === 'j1' || p.status === 'expired')
   const upcoming = products.filter(p => p.status === 'j2' || p.status === 'j5')
+  const maxW = isMobile ? '100%' : 900
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, background: c.bg }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: isMobile ? 0 : 'auto', background: c.bg }}>
 
       {/* Header */}
       <div style={{
         flexShrink: 0, background: c.bg,
-        padding: 'max(env(safe-area-inset-top, 0px), 16px) 20px 20px',
+        paddingTop: isMobile ? 'max(env(safe-area-inset-top, 0px), 16px)' : 32,
+        position: isMobile ? undefined : 'sticky', top: 0, zIndex: 10,
+        borderBottom: isMobile ? 'none' : `1px solid ${c.border}`,
       }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: c.text, letterSpacing: -0.5, margin: '0 0 2px' }}>Alertes</h1>
-        <p style={{ fontSize: 13, color: c.textMuted, margin: 0 }}>
-          {products.length > 0
-            ? `${products.length} produit${products.length > 1 ? 's' : ''} à surveiller`
-            : 'Tout est OK'}
-        </p>
+        <div style={{ maxWidth: maxW, margin: '0 auto', padding: isMobile ? '0 20px 20px' : '0 32px 20px' }}>
+          <h1 style={{ fontSize: isMobile ? 28 : 32, fontWeight: 800, color: c.text, letterSpacing: -0.5, margin: '0 0 2px' }}>Alertes</h1>
+          <p style={{ fontSize: 13, color: c.textMuted, margin: 0 }}>
+            {products.length > 0
+              ? `${products.length} produit${products.length > 1 ? 's' : ''} à surveiller`
+              : 'Tout est OK'}
+          </p>
+        </div>
       </div>
 
       {/* Scrollable */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 20px 24px' }}>
-        {products.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <div style={{
-              width: 72, height: 72, borderRadius: '50%',
-              background: '#F0FDF4', border: '3px solid #16A34A',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
-            }}>
-              <BellIcon size={28} color="#16A34A" />
+      <div style={{ flex: 1, overflowY: isMobile ? 'auto' : undefined, minHeight: 0, padding: isMobile ? '4px 20px 24px' : '20px 32px 40px' }}>
+        <div style={{ maxWidth: maxW, margin: '0 auto' }}>
+          {products.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: isMobile ? '60px 0' : '80px 0' }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: '50%',
+                background: '#F0FDF4', border: '3px solid #16A34A',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+              }}>
+                <BellIcon size={28} color="#16A34A" />
+              </div>
+              <p style={{ fontSize: 17, fontWeight: 700, color: c.text, margin: '0 0 8px' }}>Aucune alerte</p>
+              <p style={{ fontSize: 14, color: c.textMuted, margin: 0 }}>Tous vos produits sont OK</p>
             </div>
-            <p style={{ fontSize: 17, fontWeight: 700, color: c.text, margin: '0 0 8px' }}>Aucune alerte</p>
-            <p style={{ fontSize: 14, color: c.textMuted, margin: 0 }}>Tous vos produits sont OK</p>
-          </div>
-        ) : (
-          <>
-            {today.length > 0 && (
-              <>
-                <p style={{ fontSize: 11, fontWeight: 700, color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, margin: '4px 0 10px' }}>Aujourd'hui</p>
-                {today.map(p => <AlertCard key={p.id} p={p} onClose={handleClose} />)}
-              </>
-            )}
-            {upcoming.length > 0 && (
-              <>
-                <p style={{ fontSize: 11, fontWeight: 700, color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, margin: `${today.length > 0 ? '20px' : '4px'} 0 10px` }}>Cette semaine</p>
-                {upcoming.map(p => <AlertCard key={p.id} p={p} onClose={handleClose} />)}
-              </>
-            )}
-          </>
-        )}
+          ) : (
+            <>
+              {today.length > 0 && (
+                <>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, margin: '4px 0 10px' }}>Aujourd'hui</p>
+                  {today.map(p => <AlertCard key={p.id} p={p} onClose={handleClose} />)}
+                </>
+              )}
+              {upcoming.length > 0 && (
+                <>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, margin: `${today.length > 0 ? '20px' : '4px'} 0 10px` }}>Cette semaine</p>
+                  {upcoming.map(p => <AlertCard key={p.id} p={p} onClose={handleClose} />)}
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

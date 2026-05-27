@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ScanLine, Building2, Mail, Lock, Loader2, ArrowLeft } from 'lucide-react'
+import { ScanLine, Building2, Mail, Lock, Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 function GoogleIcon() {
@@ -52,6 +52,7 @@ export function Register() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
@@ -175,12 +176,24 @@ export function Register() {
             placeholder="Email"
             icon={<Mail size={16} color={iconColor} style={{ flexShrink: 0 }} />}
           />
-          <DarkField
-            type="password" value={password} onChange={setPassword}
-            placeholder="Mot de passe (min. 6 caractères)"
-            icon={<Lock size={16} color={iconColor} style={{ flexShrink: 0 }} />}
-            minLength={6}
-          />
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            background: 'rgba(255,255,255,.06)',
+            border: '1px solid rgba(255,255,255,.1)',
+            borderRadius: 14, padding: '15px 18px',
+          }}>
+            <Lock size={16} color={iconColor} style={{ flexShrink: 0 }} />
+            <input
+              type={showPwd ? 'text' : 'password'} value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="Mot de passe (min. 6 caractères)"
+              required minLength={6} className="input-dark"
+              style={{ flex: 1, background: 'transparent', fontSize: 15, outline: 'none', border: 'none', fontFamily: 'inherit' }}
+            />
+            <button type="button" onClick={() => setShowPwd(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+              {showPwd ? <EyeOff size={16} color={iconColor} /> : <Eye size={16} color={iconColor} />}
+            </button>
+          </div>
 
           {error && (
             <div style={{

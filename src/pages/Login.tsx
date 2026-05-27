@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ScanLine, Mail, Lock, Loader2, CheckCircle } from 'lucide-react'
+import { ScanLine, Mail, Lock, Loader2, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 function GoogleIcon() {
@@ -134,6 +134,7 @@ export function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [showPwd, setShowPwd] = useState(false)
   const [isRecovery, setIsRecovery] = useState(false)
 
   useEffect(() => {
@@ -217,9 +218,12 @@ export function Login() {
             </div>
             <div style={FIELD_STYLE}>
               <Lock size={16} color={ICON_COLOR} style={{ flexShrink: 0 }} />
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+              <input type={showPwd ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="Mot de passe" required className="input-dark"
                 style={{ flex: 1, background: 'transparent', fontSize: 15, outline: 'none', border: 'none', fontFamily: 'inherit' }} />
+              <button type="button" onClick={() => setShowPwd(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+                {showPwd ? <EyeOff size={16} color={ICON_COLOR} /> : <Eye size={16} color={ICON_COLOR} />}
+              </button>
             </div>
 
             {error && (

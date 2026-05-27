@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { AuthProvider } from './context/auth'
+import { SpaceProvider, useSpace } from './context/space'
+import { useTheme } from './context/theme'
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute'
 import { TabBar } from './components/TabBar'
 import { Login } from './pages/Login'
@@ -10,6 +12,7 @@ import { Stock } from './pages/Stock'
 import { Scanner } from './pages/Scanner'
 import { Alertes } from './pages/Alertes'
 import { Reglages } from './pages/Reglages'
+import { SpaceSelect } from './pages/SpaceSelect'
 import { getProducts, statusFromDLC } from './lib/storage'
 import './index.css'
 
@@ -17,18 +20,20 @@ const TAB_H = 58
 
 function AppLayout() {
   const [alertCount, setAlertCount] = useState(0)
+  const { space } = useSpace()
 
   useEffect(() => {
-    const count = getProducts().filter(p => {
-      const s = statusFromDLC(p.dlc)
-      return s === 'j1' || s === 'expired'
-    }).length
-    setAlertCount(count)
-  }, [])
+    getProducts(space?.id ?? null).then(products => {
+      setAlertCount(products.filter(p => {
+        const s = statusFromDLC(p.dlc)
+        return s === 'j1' || s === 'expired'
+      }).length)
+    })
+  }, [space?.id])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ flex: 1, overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <Outlet />
       </div>
       <div style={{ flexShrink: 0, height: `calc(${TAB_H}px + env(safe-area-inset-bottom, 16px))` }} />
@@ -44,31 +49,50 @@ function AppLayout() {
   )
 }
 
+function SpaceGuard({ children }: { children: React.ReactNode }) {
+  const { selected } = useSpace()
+  if (!selected) return <SpaceSelect />
+  return <>{children}</>
+}
+
+function AppWrapper({ children }: { children: React.ReactNode }) {
+  const { c } = useTheme()
+  return (
+    <div style={{
+      width: '100%', maxWidth: 430, height: '100%',
+      margin: '0 auto', background: c.bg,
+      position: 'relative', overflow: 'hidden',
+    }}>
+      {children}
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div style={{
-          width: '100%',
-          maxWidth: 430,
-          height: '100%',
-          margin: '0 auto',
-          background: '#F2F2F7',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
-          <Routes>
-            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-            <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
-            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/stock" element={<Stock />} />
-              <Route path="/scanner" element={<Scanner />} />
-              <Route path="/alertes" element={<Alertes />} />
-              <Route path="/reglages" element={<Reglages />} />
-            </Route>
-          </Routes>
-        </div>
+        <SpaceProvider>
+          <AppWrapper>
+            <Routes>
+              <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+              <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+              <Route element={
+                <ProtectedRoute>
+                  <SpaceGuard>
+                    <AppLayout />
+                  </SpaceGuard>
+                </ProtectedRoute>
+              }>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/stock" element={<Stock />} />
+                <Route path="/scanner" element={<Scanner />} />
+                <Route path="/alertes" element={<Alertes />} />
+                <Route path="/reglages" element={<Reglages />} />
+              </Route>
+            </Routes>
+          </AppWrapper>
+        </SpaceProvider>
       </AuthProvider>
     </BrowserRouter>
   )

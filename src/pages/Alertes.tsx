@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Clock, Bell as BellIcon } from 'lucide-react'
-import { getProducts, statusFromDLC, daysUntil, formatDLC, type StoredProduct } from '../lib/storage'
+import { AlertTriangle, Clock, Bell as BellIcon, CheckCheck, Loader2 } from 'lucide-react'
+import { useTheme } from '../context/theme'
+import { useSpace } from '../context/space'
+import { supabase } from '../lib/supabase'
+import { getProducts, closeLot, statusFromDLC, daysUntil, formatDLC, type StoredProduct } from '../lib/storage'
 
 type Enriched = StoredProduct & { status: string; daysLeft: number }
 
@@ -11,64 +14,111 @@ const C = {
   j5:      { label: 'J-5',    tagBg: '#DBEAFE', tagColor: '#2563EB', iconBg: '#EFF6FF', border: '#60A5FA', Icon: BellIcon,      msg: (p: Enriched) => `Expire dans ${p.daysLeft} jours · ${formatDLC(p.dlc)}` },
 }
 
-function AlertCard({ p }: { p: Enriched }) {
-  const c = C[p.status as keyof typeof C]
-  if (!c) return null
+function AlertCard({
+  p,
+  onClose,
+}: {
+  p: Enriched
+  onClose: (id: string, lotId: string | null | undefined) => void
+}) {
+  const { c } = useTheme()
+  const conf = C[p.status as keyof typeof C]
+  const [closing, setClosing] = useState(false)
+  if (!conf) return null
+
+  async function handleClose(e: React.MouseEvent) {
+    e.stopPropagation()
+    setClosing(true)
+    await onClose(p.id, p.lot_id)
+  }
+
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
-      background: '#fff', borderRadius: 18,
+      background: c.card, borderRadius: 18,
       padding: '14px 16px', marginBottom: 10,
-      boxShadow: '0 2px 8px rgba(0,0,0,.05)',
-      borderLeft: `3px solid ${c.border}`,
+      boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+      borderLeft: `3px solid ${conf.border}`,
     }}>
-      <div style={{ width: 42, height: 42, borderRadius: 13, background: c.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <c.Icon size={18} color={c.tagColor} />
+      <div style={{ width: 42, height: 42, borderRadius: 13, background: conf.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <conf.Icon size={18} color={conf.tagColor} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</p>
-        <p style={{ fontSize: 12, color: '#6B7280', margin: '3px 0 0' }}>{c.msg(p)}</p>
+        <p style={{ fontSize: 14, fontWeight: 600, color: c.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</p>
+        <p style={{ fontSize: 12, color: c.textSub, margin: '3px 0 0' }}>{conf.msg(p)}</p>
         {p.qty && p.unit && (
-          <p style={{ fontSize: 11, color: '#9CA3AF', margin: '2px 0 0' }}>{p.qty} {p.unit}</p>
+          <p style={{ fontSize: 11, color: c.textMuted, margin: '2px 0 0' }}>{p.qty} {p.unit}</p>
         )}
       </div>
-      <span style={{ fontSize: 10, fontWeight: 700, padding: '4px 9px', borderRadius: 8, background: c.tagBg, color: c.tagColor, flexShrink: 0, alignSelf: 'flex-start' }}>{c.label}</span>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '4px 9px', borderRadius: 8, background: conf.tagBg, color: conf.tagColor }}>{conf.label}</span>
+        <button
+          onClick={handleClose}
+          disabled={closing}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: '#F0FDF4', border: 'none', borderRadius: 8,
+            padding: '5px 9px', cursor: closing ? 'default' : 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          {closing
+            ? <Loader2 size={11} color="#16A34A" style={{ animation: 'spin .7s linear infinite' }} />
+            : <CheckCheck size={11} color="#16A34A" />
+          }
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#16A34A' }}>Tout consommé</span>
+        </button>
+      </div>
     </div>
   )
 }
 
 export function Alertes() {
+  const { c } = useTheme()
+  const { space } = useSpace()
   const [products, setProducts] = useState<Enriched[]>([])
 
-  useEffect(() => {
-    const all = getProducts()
-    const enriched = all
-      .map(p => ({ ...p, status: statusFromDLC(p.dlc), daysLeft: daysUntil(p.dlc) }))
-      .filter(p => p.status !== 'ok')
-    setProducts(enriched)
-  }, [])
+  async function load() {
+    const all = await getProducts(space?.id ?? null)
+    setProducts(
+      all
+        .map(p => ({ ...p, status: statusFromDLC(p.dlc), daysLeft: daysUntil(p.dlc) }))
+        .filter(p => p.status !== 'ok')
+    )
+  }
+
+  useEffect(() => { load() }, [space?.id])
+
+  async function handleClose(productId: string, lotId: string | null | undefined) {
+    if (lotId) {
+      await closeLot(lotId)
+    } else {
+      await supabase.from('products').update({ status: 'consumed' }).eq('id', productId)
+    }
+    await load()
+  }
 
   const today    = products.filter(p => p.status === 'j1' || p.status === 'expired')
   const upcoming = products.filter(p => p.status === 'j2' || p.status === 'j5')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, background: c.bg }}>
 
+      {/* Header */}
       <div style={{
-        flexShrink: 0,
+        flexShrink: 0, background: c.bg,
         padding: 'max(env(safe-area-inset-top, 0px), 16px) 20px 20px',
-        background: '#F2F2F7',
       }}>
-        <h1 style={{ fontSize: 30, fontWeight: 800, color: '#111827', letterSpacing: -1, margin: 0 }}>Alertes</h1>
-        <p style={{ fontSize: 13, color: '#9CA3AF', margin: '4px 0 0' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: c.text, letterSpacing: -0.5, margin: '0 0 2px' }}>Alertes</h1>
+        <p style={{ fontSize: 13, color: c.textMuted, margin: 0 }}>
           {products.length > 0
             ? `${products.length} produit${products.length > 1 ? 's' : ''} à surveiller`
             : 'Tout est OK'}
         </p>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 20px 20px' }}>
-
+      {/* Scrollable */}
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 20px 24px' }}>
         {products.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
             <div style={{
@@ -78,26 +128,25 @@ export function Alertes() {
             }}>
               <BellIcon size={28} color="#16A34A" />
             </div>
-            <p style={{ fontSize: 17, fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>Aucune alerte</p>
-            <p style={{ fontSize: 14, color: '#9CA3AF', margin: 0 }}>Tous vos produits sont OK</p>
+            <p style={{ fontSize: 17, fontWeight: 700, color: c.text, margin: '0 0 8px' }}>Aucune alerte</p>
+            <p style={{ fontSize: 14, color: c.textMuted, margin: 0 }}>Tous vos produits sont OK</p>
           </div>
         ) : (
           <>
             {today.length > 0 && (
               <>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1.2, margin: '4px 0 10px' }}>Aujourd'hui</p>
-                {today.map(p => <AlertCard key={p.id} p={p} />)}
+                <p style={{ fontSize: 11, fontWeight: 700, color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, margin: '4px 0 10px' }}>Aujourd'hui</p>
+                {today.map(p => <AlertCard key={p.id} p={p} onClose={handleClose} />)}
               </>
             )}
             {upcoming.length > 0 && (
               <>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1.2, margin: `${today.length > 0 ? '20px' : '4px'} 0 10px` }}>Cette semaine</p>
-                {upcoming.map(p => <AlertCard key={p.id} p={p} />)}
+                <p style={{ fontSize: 11, fontWeight: 700, color: c.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, margin: `${today.length > 0 ? '20px' : '4px'} 0 10px` }}>Cette semaine</p>
+                {upcoming.map(p => <AlertCard key={p.id} p={p} onClose={handleClose} />)}
               </>
             )}
           </>
         )}
-
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ScanLine, Building2, Mail, Lock, Loader2, ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -56,6 +56,12 @@ export function Register() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const prev = document.body.style.background
+    document.body.style.background = '#09090D'
+    return () => { document.body.style.background = prev }
+  }, [])
 
   async function handleGoogle() {
     setGoogleLoading(true)

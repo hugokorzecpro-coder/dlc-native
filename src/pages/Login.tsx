@@ -137,6 +137,12 @@ export function Login() {
   const [isRecovery, setIsRecovery] = useState(false)
 
   useEffect(() => {
+    const prev = document.body.style.background
+    document.body.style.background = '#09090D'
+    return () => { document.body.style.background = prev }
+  }, [])
+
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
     })

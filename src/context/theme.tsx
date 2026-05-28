@@ -43,6 +43,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('dlc-theme', dark ? 'dark' : 'light')
     document.body.style.background = dark ? '#000000' : '#F5F5F7'
     document.body.style.color = dark ? '#FFFFFF' : '#1C1C1E'
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', dark ? '#000000' : '#F5F5F7')
   }, [dark])
 
   return (

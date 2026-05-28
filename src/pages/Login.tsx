@@ -168,7 +168,9 @@ export function Login() {
     if (data.error || !data.access_token) {
       throw new Error(data.error?.message || data.msg || 'Erreur de connexion')
     }
-    await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token })
+    const { error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token })
+    if (error) throw new Error(error.message)
+    window.location.href = '/'
   }
 
   async function handleSubmit(e: React.FormEvent) {

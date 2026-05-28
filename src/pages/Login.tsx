@@ -159,7 +159,7 @@ export function Login() {
   }
 
   async function loginViaProxy(emailVal: string, pwdVal: string) {
-    const res = await fetch('/api/login', {
+    const res = await fetch('https://dlc-native.pages.dev/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: emailVal, password: pwdVal }),

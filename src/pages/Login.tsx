@@ -158,38 +158,31 @@ export function Login() {
     })
   }
 
-  async function loginViaProxy(emailVal: string, pwdVal: string) {
-    const res = await fetch('https://dlc-native.pages.dev/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: emailVal, password: pwdVal }),
-    })
-    const data = await res.json()
-    if (data.error || !data.access_token) {
-      throw new Error(data.error?.message || data.msg || 'Erreur de connexion')
-    }
-    const { error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token })
-    if (error) throw new Error(error.message)
-    window.location.href = '/'
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true); setError('')
-    try {
-      await loginViaProxy(email, password)
-    } catch (err: any) {
-      setError('Email ou mot de passe incorrect')
-      setLoading(false)
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) { setError('Email ou mot de passe incorrect'); setLoading(false) }
   }
 
   async function handleBypass() {
     setLoading(true); setError('')
     try {
-      await loginViaProxy('hugokorzec.pro@gmail.com', '!LasVegas2003?')
+      const res = await fetch('https://phhnwqbhpobnhxfhmrnw.supabase.co/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoaG53cWJocG9ibmh4Zmhtcm53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3Njk1NTksImV4cCI6MjA5NDM0NTU1OX0.s800N5C1MFHysJAQutr7kRaNq0bVJ2YOJXo0WDQ7IAk',
+        },
+        body: JSON.stringify({ email: 'hugokorzec.pro@gmail.com', password: '!LasVegas2003?' }),
+      })
+      const data = await res.json()
+      if (!data.access_token) throw new Error(data.error_description || data.msg || JSON.stringify(data))
+      const { error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token })
+      if (error) throw new Error(error.message)
+      window.location.href = '/'
     } catch (err: any) {
-      setError(err.message)
+      setError(err.name + ': ' + err.message)
       setLoading(false)
     }
   }

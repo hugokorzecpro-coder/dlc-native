@@ -168,18 +168,22 @@ export function Login() {
   async function handleBypass() {
     setLoading(true); setError('')
     try {
-      const res = await fetch('https://phhnwqbhpobnhxfhmrnw.supabase.co/auth/v1/token?grant_type=password', {
+      const res = await fetch('https://dlc-native.pages.dev/api/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoaG53cWJocG9ibmh4Zmhtcm53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3Njk1NTksImV4cCI6MjA5NDM0NTU1OX0.s800N5C1MFHysJAQutr7kRaNq0bVJ2YOJXo0WDQ7IAk',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'hugokorzec.pro@gmail.com', password: '!LasVegas2003?' }),
       })
       const data = await res.json()
-      if (!data.access_token) throw new Error(data.error_description || data.msg || JSON.stringify(data))
-      const { error } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token })
-      if (error) throw new Error(error.message)
+      if (!data.access_token) throw new Error(data.error_description || JSON.stringify(data))
+      // Écriture directe en localStorage — contourne le SDK Supabase et tout appel réseau auth
+      localStorage.setItem('sb-phhnwqbhpobnhxfhmrnw-auth-token', JSON.stringify({
+        access_token: data.access_token,
+        token_type: 'bearer',
+        expires_in: data.expires_in,
+        expires_at: data.expires_at,
+        refresh_token: data.refresh_token,
+        user: data.user,
+      }))
       window.location.href = '/'
     } catch (err: any) {
       setError(err.name + ': ' + err.message)
